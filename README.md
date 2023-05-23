@@ -47,7 +47,7 @@ We release the training web images of CUB, FLO, SUN, AWA2 and APY at Baidu Cloud
 
 ## Install
 
-使用 pip 安装依赖：`pip install -r requirements.txt`
+Install dependencies using pip: `pip install -r requirements.txt`.
 
 The proposed implementation is implemented in Python 3.10.9 and Pytorch 2.0.0, on Ubuntu 18.04 with an NVIDIA 3090 GPU.
 
