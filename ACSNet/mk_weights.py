@@ -110,8 +110,6 @@ def main():
                 names = torch.load(f'{save_path}/{noisy_set.int2category[c]}_name.pth')
                 feats = torch.load(f'{save_path}/{noisy_set.int2category[c]}_feat.pth')
 
-            # 就是类内enum的pairs进行相似度计算
-            # 再根据图片的类内相似度均值赋予权重
             if not os.path.exists(f'{save_path}/{noisy_set.int2category[c]}_matrix.pth'):
                 L = len(feats)
                 similarity_matrix = feats.new_ones(L, len(base_feats) if args.inter_cla else L) * -1

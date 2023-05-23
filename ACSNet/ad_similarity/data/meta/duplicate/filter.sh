@@ -1,1 +1,0 @@
-python data/meta/duplicate/filter_dataset.py --data_path ../dataset/CUB

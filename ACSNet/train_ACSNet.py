@@ -178,11 +178,6 @@ def train(args, epoch, simnet, att_classifier, domain_classifier, A_loader, B_lo
     for batch_i, (A_data, B_data) in tqdm(enumerate(zip(A_pairs_data_loader, B_pairs_data_loader))):
         A_images, A_categories, A_names = A_data
         B_images, B_categories, B_names = B_data
-        # A是clean base B是noisy novel
-        # A_images/B_images
-        # torch.Size([1, 50, 3, 224, 224])
-        # A_categories/B_categories
-        # torch.Size([1, 50])
 
         L = len(A_names)
 
@@ -190,67 +185,29 @@ def train(args, epoch, simnet, att_classifier, domain_classifier, A_loader, B_lo
             print(f'\nIter{batch_i} continued\n')
             continue
 
-        # -----------------
-        #  Train Similarity Net
-        # -----------------
-        # simnet.similarity_head.module.bn
         A_targets = make_cosine_similarities(A_categories[0].cuda(), att) if args.cos_sim else make_binary_similarities(
             A_categories[0].cuda())
         B_targets = make_cosine_similarities(B_categories[0].cuda(), att) if args.cos_sim else make_binary_similarities(
             B_categories[0].cuda())
-        # print('A_targets',A_targets.shape)
-        # torch.Size([2500])
 
-        # Returns a Tensor of size = size filled with 0. By default
-        # the returned Tensor has the same torch.dtype and torch.device as this tensor.
         A_attr = att[A_categories.squeeze()]
         B_attr = att[B_categories.squeeze()]
         att_targets = torch.cat((A_attr, B_attr)).float().clone().detach()
         domain_targets = torch.cat((A_targets.new_zeros(len(A_targets)),
                                     B_targets.new_ones(len(B_targets)))).long().clone().detach()
-        # 这里的domain就是属于base为0 属于novel为1
-        # print('domain_target',domain_target.shape)
-        # torch.Size([5000])
 
         sim_optimizer.zero_grad()
 
         AB_feat = simnet.backbone(torch.cat((A_images[0], B_images[0])).cuda())
-        # print('AB_feat',AB_feat.shape)
-        # torch.Size([100, 2048])
-
-        # 也就是把第一维度均匀分到chunk_size个箱
-        # >>> torch.arange(11).chunk(6)
-        # (tensor([0, 1]),
-        #  tensor([2, 3]),
-        #  tensor([4, 5]),
-        #  tensor([6, 7]),
-        #  tensor([8, 9]),
-        #  tensor([10]))
         A_feat, B_feat = AB_feat.chunk(2)
-        # print('A_feat',A_feat.shape)
-        # torch.Size([50, 2048])
 
         A_pairs = pair_enumeration(A_feat)
         B_pairs = pair_enumeration(B_feat)
-        # print('A_pairs',A_pairs.shape)
-        # torch.Size([2500, 4096])
 
         AB_similarities, AB_diff_feat = simnet.similarity_head(torch.cat((A_pairs, B_pairs)))
-        # simnet的结构就是一个backbone + similarity_head(k层fc+bn+relu, 这里的k可选2和4)
-        # forward的时候 先backbone embedding 然后进行enumerate pairs 最后经过sim head
-        # head的output中的diff_feat就是最后一层前的feat
-        # similarity是分别对于base和novel进行enum然后同类为1 不同为0 (注意不是domain)
-        # AB_similarities
-        # torch.Size([5000, 2])
-        # AB_diff_feat
-        # torch.Size([5000, 2048])
 
         A_predictions, B_predictions = AB_similarities.chunk(2)
         A_diff_feat, B_diff_feat = AB_diff_feat.chunk(2)
-        # A_predictions
-        # torch.Size([2500, 2])
-        # A_diff_feat
-        # torch.Size([2500, 2048])
 
         att_pred = att_classifier(AB_feat)
         att_loss = att_criterion(att_pred, att_targets)
@@ -258,7 +215,6 @@ def train(args, epoch, simnet, att_classifier, domain_classifier, A_loader, B_lo
         domain_loss = domain_criterion(domain_pred, domain_targets)
 
         cls_loss = criterion(A_predictions, A_targets)
-        # 然后pair监督只根据A更新SimNet
 
         total_loss = cls_loss.mean() - args.beta * 1 / 2 * (att_loss + domain_loss)
 
@@ -271,11 +227,6 @@ def train(args, epoch, simnet, att_classifier, domain_classifier, A_loader, B_lo
         main_meter.update(A_predictions, A_targets.argmax(1).cpu() if args.cos_sim else A_targets)
         cls_loss_avg.update(cls_loss.mean().item())
 
-        # ---------------------
-        #  Train Discriminator
-        # ---------------------
-
-        # attribute head
         att_optimizer.zero_grad()
         att_pred = att_classifier(AB_feat.clone().detach())
         att_loss = att_criterion(att_pred, att_targets)
@@ -283,7 +234,6 @@ def train(args, epoch, simnet, att_classifier, domain_classifier, A_loader, B_lo
         att_optimizer.step() if args.att_head else None
         att_optimizer.zero_grad()
 
-        # 训练domain_classifier(fc) 辅助监督的head
         domain_optimizer.zero_grad()
         domain_pred = domain_classifier(torch.cat((A_diff_feat, B_diff_feat)).clone().detach())
         domain_loss = domain_criterion(domain_pred, domain_targets)
