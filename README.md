@@ -16,7 +16,7 @@ The code in this repository presents the optimal implementation of BGF-MSL, i.e.
 
 ## Data
 
-We release the training web images of CUB, FLO, SUN, AWA2 and APY at Baidu Cloud(access code: META)  to support future comparison and analysis in Meta-Shot Learning research. The files in `./dataset` is as follows:
+We release the training web images of CUB, FLO, SUN, AWA2 and APY at Baidu Cloud (access code: META) to support future comparison and analysis in Meta-Shot Learning research. The files in `./dataset` is as follows:
 
 ```angular2html
 ├── APY
